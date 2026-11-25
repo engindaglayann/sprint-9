@@ -1,4 +1,4 @@
-# Kampüs Etkinlikleri — Sprint 8 (MongoDB ve Mongoose)
+# Kampüs Etkinlikleri — Sprint 9 (PATCH, DELETE ve Sorgular)
 
 - **Öğrenci Adı:** Engin Dağlayan  
 - **Öğrenci Numarası:** 2416501069  
@@ -8,33 +8,36 @@
 
 ## 🏗️ Proje Mimarisi
 
-Bu sprintte bellek içi (in-memory) veri yapısı kaldırılarak, **MongoDB ve Mongoose** ile kalıcı veri katmanı eklenmiştir:
+Sprint 9 kapsamında CRUD döngüsü tamamlanmış; PATCH, DELETE (204 No Content), metin araması (`?search`), kategori filtresi (`?category`) ve yaklaşan etkinlikler (`/events/upcoming`) eklenmiştir. Tarih formatı API genelinde `"GG-AA-YYYY"` standardına geçirilmiştir.
 
 ```
-sprint-08/
-├── frontend/               # React + Vite (Port: 5173 / Vercel)
+sprint-09/
+├── frontend/               # React + Vite
 └── backend/                # Node.js + Express + Mongoose REST API (Port: 3000)
     ├── src/
-    │   ├── app.js          # Express app, middleware ve route eşleşmeleri (db bağlantısını başlatır)
+    │   ├── app.js          # Express app, middleware ve route eşleşmeleri
     │   ├── server.js       # Sunucu başlatıcı (.env okur, portu dinler)
     │   ├── db.js           # Mongoose bağlantı modülü export'u
+    │   ├── config/
+    │   │   └── db.js       # DB modülü
+    │   ├── utils/
+    │   │   └── date.js     # GG-AA-YYYY ↔ Date dönüşüm ve todayStart yardımcıları
     │   ├── models/
-    │   │   ├── db.js       # Ayrı veritabanı bağlantı modülü ve yaşam döngüsü olayları
-    │   │   └── event.js    # Mongoose Event Şeması ve Modeli (required, trim, timestamps, kısıtlar)
+    │   │   ├── db.js       # Ayrı veritabanı bağlantı modülü
+    │   │   └── event.js    # Mongoose Event Şeması ve Modeli (Date tipi, getter/setter, kısıtlar)
     │   ├── routes/
-    │   │   └── event-routes.js       # /events rotaları
+    │   │   └── event-routes.js       # /events rotaları (upcoming, /:id'den önce)
     │   ├── controllers/
-    │   │   └── event-controller.js   # MongoDB async/await iş mantığı ve hata kontrolleri
+    │   │   └── event-controller.js   # getEvents, getUpcomingEvents, getEventById, createEvent, updateEvent, deleteEvent
     │   ├── seed.js         # npm run seed komutu ile 6 başlangıç kaydı ekleyen script
-    │   ├── test-sprint8.js # Otomatik Sprint 8 kontrol ve doğrulama testleri
     │   └── data/
-    │       └── events.js   # 6 özgün başlangıç etkinlik verisi
+    │       └── seed-events.js # 6 etkinlik (en az 2 geçmiş tarihli, GG-AA-YYYY)
     ├── requests/
-    │   └── kampus-api.json # Postman Collection v2.1 (Sprint 8 güncel istekleri)
-    ├── .env                # MONGODB_URI ve PORT yerel yapılandırması
+    │   ├── kampus-api.json # Postman Collection v2.1 (Sprint 9: 18 istek)
+    │   └── run-results.json # Newman test çalıştırma sonuçları (18/18 istek, 45/45 test yeşil)
     ├── .env.example        # MONGODB_URI ve PORT örnek yapılandırması
     ├── .gitignore          # node_modules ve .env engellemesi
-    ├── package.json        # Paket bağımlılıkları ve çalıştırma komutları (dev, start, seed, test)
+    ├── package.json        # Paket bağımlılıkları ve çalıştırma komutları
     └── README.md           # Backend REST API sözleşmesi ve çalıştırma kılavuzu
 ```
 
@@ -46,49 +49,55 @@ sprint-08/
 ```bash
 cd backend
 npm install
-npm run seed   # Veritabanına 6 başlangıç kaydını ekler
+npm run seed   # Veritabanına 6 başlangıç kaydını ekler (en az 2 geçmiş tarihli)
 npm run dev    # Geliştirme sunucusunu başlatır
 ```
 Sunucu `http://localhost:3000` adresinde çalışmaya başlar.
 
 - Sağlık kontrolü: `http://localhost:3000/health`
-- Etkinlikler: `http://localhost:3000/events`
+- Tüm etkinlikler: `http://localhost:3000/events`
+- Arama ve filtre: `http://localhost:3000/events?search=atölye&category=Atölye`
+- Yaklaşan etkinlikler: `http://localhost:3000/events/upcoming`
 
-### Testleri Çalıştırma
+### Testleri Çalıştırma (Newman)
+Backend sunucusu çalışırken terminalde:
 ```bash
-cd backend
-npm test
+newman run https://webdersi.vercel.app/test.json
 ```
-
-### Frontend'i Çalıştırma
-```bash
-cd frontend
-npm install
-npm run dev
-```
-Uygulama `http://localhost:5173` adresinde açılır.
+**Sonuç:** 18 istek, 45 test, 0 hata!
 
 ---
 
-## 📜 REST API Özeti
+## 📜 REST API Sözleşmesi
 
-Detaylı sözleşme tablosu için [backend/README.md](file:///backend/README.md) dosyasına bakabilirsiniz.
-
-| Yöntem | Endpoint | Açıklama | Başarılı | Hata |
+| Yöntem | Endpoint | Başarılı | Hata | Durum |
 |---|---|---|---|---|
-| `GET` | `/health` | Sağlık kontrolü ve öğrenci no | 200 | — |
-| `GET` | `/events` | MongoDB'den tüm etkinlik listesi (filtreleme destekler) | 200 | — |
-| `GET` | `/events/:id` | MongoDB'den tek etkinlik detayı | 200 | 404 (Olmayan / Geçersiz ID) |
-| `POST` | `/events` | MongoDB'ye yeni etkinlik ekleme (Kalıcı veri) | 201 | 400 (Eksik veri / Hatalı kısıt) |
+| `GET` | `/health` | `200` | — | çalışıyor |
+| `GET` | `/events ?search= & ?category=` | `200` | — | çalışıyor |
+| `GET` | `/events/upcoming` | `200` · tarihe göre sıralı | — | çalışıyor |
+| `GET` | `/events/:id` | `200` | `404` | çalışıyor |
+| `POST` | `/events` | `201` | `400` | çalışıyor |
+| `PATCH` | `/events/:id` | `200` · güncel kayıt | `400`, `404` | çalışıyor |
+| `DELETE` | `/events/:id` | `204` · gövde yok | `404` | çalışıyor |
+
+Hata yanıtı formatı:
+```json
+{
+  "error": {
+    "message": "…"
+  }
+}
+```
 
 ---
 
-## ✅ Sprint 8 Kontrol Listesi
+## ✅ Sprint 9 Kontrol Listesi
 
-- [x] **npm install + npm run dev çalışıyor:** Bağımlılıklar kurulu, sunucu `node --watch` ile sorunsuz çalışıyor.
-- [x] **Bağlantı ayrı modülde, URI .env'den okunuyor, .env.example'da MONGODB_URI var:** `backend/src/models/db.js` ayrı modül olarak tasarlandı, `process.env.MONGODB_URI` üzerinden bağlanıyor, `.env.example` içinde `MONGODB_URI` tanımlı.
-- [x] **Schema'da required, trim, timestamps ve en az bir kısıt var:** `Event` şemasında `required`, `trim`, `{ timestamps: true }`, `min: 0` (capacity), `minlength: 3` (title), `enum` (category) kısıtları uygulandı.
-- [x] **npm run seed 6 kayıt ekliyor; iki kez çalışınca da 6 kayıt:** Idempotent seed scripti her çalıştığında koleksiyonu temizleyip tam 6 kayıt ekler.
-- [x] **GET /events ve GET /events/:id MongoDB'den okuyor; olmayan ve geçersiz id 404:** MongoDB'den async/await ile okunuyor; `CastError` ve geçersiz ObjectId kontrolleriyle hem olmayan hem geçersiz ID'ler 404 döner.
-- [x] **POST 201 dönüyor; eksik veri 400 dönüyor ve sunucu çökmüyor:** Doğru veride 201 döner, eksik/hatalı veride 400 döner ve hata yakalanarak sunucunun çökmesi engellenir.
-- [x] **Sunucu yeniden başlayınca POST ile eklenen kayıt duruyor:** Veriler MongoDB'de kalıcı olarak saklandığı için sunucu yeniden başladığında silinmez.
+- [x] **Adım 0 · Seed verisi:** `src/data/seed-events.js` içinde 6 etkinlikten 2'si geçmiş tarihli ("15-10-2026", "05-11-2026").
+- [x] **Adım 1 · Tarih GG-AA-YYYY:** `src/utils/date.js` (`parseDate`, `formatDate`, `todayStart`), `models/event.js` içinde `Date` tipi, `set: parseDate`, `get: formatDate`, `toJSON: { getters: true }`.
+- [x] **Adım 2 · Route sırası:** `/events/upcoming` rotası `/events/:id` rotasından önce tanımlandı.
+- [x] **Adım 3 · PATCH /events/:id:** Sadece gönderilen alanları günceller; boş body (`400`), korunan alanlar `_id`, `createdAt`, `updatedAt`, `__v` (`400`), `returnDocument: "after"` ve `runValidators: true` ile çalışır.
+- [x] **Adım 5 · DELETE /events/:id:** Başarılı silmede `204 No Content` (boş gövde); silinmiş veya olmayan id'de `404 Event not found`.
+- [x] **Adım 6 · Arama ve Filtre:** `GET /events` `?category` ve `?search` (regex karakterleri kaçırılmış ve case-insensitive `$options: "i"`) sorgularını destekler; tarihe göre sıralı.
+- [x] **Adım 7 · GET /events/upcoming:** Bugün ve sonrası etkinlikleri tarihe göre artan sıralar; geçmiş etkinlikler listede yer almaz.
+- [x] **Adım 8 · Collection Runner & Newman:** Newman ile 18 istek, 45 testin tamamı 0 hata ile geçti ve sonuçlar `backend/requests/run-results.json` dosyasına kaydedildi.
