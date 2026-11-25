@@ -1,0 +1,295 @@
+{
+  "info": {
+    "_postman_id": "c1f7a8b9-42e1-4567-89ab-0123456789cd",
+    "name": "Kampüs API",
+    "description": "Kampüs Etkinlikleri REST API Postman Test Koleksiyonu (Sprint 8)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "eventId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "GET 1 Health",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"1. Status kodu 200 olmalı\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"2. Status değeri 'ok' olmalı\", function () {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData.status).to.eql(\"ok\");",
+              "});",
+              "",
+              "pm.test(\"3. Öğrenci numarası doğru olmalı\", function () {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData.student).to.eql(\"2416501069\");",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/health",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "health"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "GET 2 Etkinlik listesi",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"4. Status kodu 200 olmalı\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"5. Dizi olarak etkinlikler dönmeli\", function () {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData).to.be.an(\"array\");",
+              "});",
+              "",
+              "pm.test(\"6. Etkinlikte _id ve createdAt bulunmalı\", function () {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData[0]).to.have.property(\"_id\");",
+              "    pm.expect(jsonData[0]).to.have.property(\"createdAt\");",
+              "});",
+              "",
+              "// 3. istekte kullanılmak üzere ilk etkinliğin id'sini değişkene kaydet",
+              "var jsonData = pm.response.json();",
+              "if (jsonData && jsonData.length > 0) {",
+              "    var id = jsonData[0]._id || jsonData[0].id;",
+              "    pm.collectionVariables.set(\"eventId\", id);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/events",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "events"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "GET 3 Tek etkinlik",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"7. Status kodu 200 olmalı\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"8. İstenen etkinliğin _id değeri eşleşmeli\", function () {",
+              "    var jsonData = pm.response.json();",
+              "    var expectedId = pm.collectionVariables.get(\"eventId\");",
+              "    if (expectedId) {",
+              "        pm.expect(jsonData._id).to.eql(expectedId);",
+              "    } else {",
+              "        pm.expect(jsonData).to.have.property(\"_id\");",
+              "    }",
+              "});",
+              "",
+              "pm.test(\"9. Etkinlik başlık ve kategori içermeli\", function () {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData).to.have.property(\"title\");",
+              "    pm.expect(jsonData).to.have.property(\"category\");",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/events/{{eventId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "events",
+            "{{eventId}}"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "GET 4 Olmayan etkinlik (404)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"10. Status kodu 404 olmalı\", function () {",
+              "    pm.response.to.have.status(404);",
+              "});",
+              "",
+              "pm.test(\"11. Hata mesajı 'Event not found' olmalı\", function () {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData.error).to.exist;",
+              "    pm.expect(jsonData.error.message).to.eql(\"Event not found\");",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/events/111111",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "events",
+            "111111"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "POST 5 Etkinlik oluştur (201)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"12. Status kodu 201 olmalı\", function () {",
+              "    pm.response.to.have.status(201);",
+              "});",
+              "",
+              "pm.test(\"13. Yeni etkinlik _id ve doğru başlık içermeli\", function () {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData).to.have.property(\"_id\");",
+              "    pm.expect(jsonData.title).to.eql(\"Git ve GitHub Atölyesi\");",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Git ve GitHub Atölyesi\",\n  \"category\": \"Atölye\",\n  \"capacity\": 30,\n  \"date\": \"2026-12-01\",\n  \"time\": \"14:00\",\n  \"location\": \"Bilgisayar Laboratuvarı 1\",\n  \"description\": \"Git ve GitHub ile versiyon kontrolü pratikleri.\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/events",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "events"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "POST 6 Eksik veri (400)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"14. Status kodu 400 olmalı\", function () {",
+              "    pm.response.to.have.status(400);",
+              "});",
+              "",
+              "pm.test(\"15. Doğrulama hata mesajı dönmeli\", function () {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData.error).to.exist;",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Git Atölyesi\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/events",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "events"
+          ]
+        }
+      },
+      "response": []
+    }
+  ]
+}
